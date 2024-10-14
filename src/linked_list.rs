@@ -2,19 +2,15 @@
 
 //! Linked lists.
 //!
-//! Based on linux/rust/kernel/linked_list.rs, but use
-//! [`unsafe_list::List`] as the inner implementation.
-//!
 //! TODO: This module is a work in progress.
 
-extern crate alloc;
-
-use alloc::{boxed::Box, sync::Arc};
+use alloc::boxed::Box;
 use core::ptr::NonNull;
 
-use crate::unsafe_list::{self, Adapter, Cursor, Links};
+pub use crate::raw_list::{Cursor, GetLinks, Links};
+use crate::{raw_list, raw_list::RawList, sync::Arc};
 
-// TODO: Use the one from `kernel::file_operations::PointerWrapper` instead.
+// TODO: Use the one from `kernel::file_operations::ForeignOwnable` instead.
 /// Wraps an object to be inserted in a linked list.
 pub trait Wrapper<T: ?Sized> {
     /// Converts the wrapped object into a pointer that represents it.
@@ -32,92 +28,80 @@ pub trait Wrapper<T: ?Sized> {
 }
 
 impl<T: ?Sized> Wrapper<T> for Box<T> {
-    #[inline]
     fn into_pointer(self) -> NonNull<T> {
         NonNull::new(Box::into_raw(self)).unwrap()
     }
 
-    #[inline]
     unsafe fn from_pointer(ptr: NonNull<T>) -> Self {
         unsafe { Box::from_raw(ptr.as_ptr()) }
     }
 
-    #[inline]
     fn as_ref(&self) -> &T {
         AsRef::as_ref(self)
     }
 }
 
 impl<T: ?Sized> Wrapper<T> for Arc<T> {
-    #[inline]
     fn into_pointer(self) -> NonNull<T> {
         NonNull::new(Arc::into_raw(self) as _).unwrap()
     }
 
-    #[inline]
     unsafe fn from_pointer(ptr: NonNull<T>) -> Self {
         // SAFETY: The safety requirements of `from_pointer` satisfy the ones from `Arc::from_raw`.
         unsafe { Arc::from_raw(ptr.as_ptr() as _) }
     }
 
-    #[inline]
     fn as_ref(&self) -> &T {
         AsRef::as_ref(self)
     }
 }
 
 impl<T: ?Sized> Wrapper<T> for &T {
-    #[inline]
     fn into_pointer(self) -> NonNull<T> {
         NonNull::from(self)
     }
 
-    #[inline]
     unsafe fn from_pointer(ptr: NonNull<T>) -> Self {
         unsafe { &*ptr.as_ptr() }
     }
 
-    #[inline]
     fn as_ref(&self) -> &T {
         self
     }
 }
 
 /// A descriptor of wrapped list elements.
-pub trait AdapterWrapped: Adapter {
+pub trait GetLinksWrapped: GetLinks {
     /// Specifies which wrapper (e.g., `Box` and `Arc`) wraps the list entries.
     type Wrapped: Wrapper<Self::EntryType>;
 }
 
-impl<T: ?Sized> AdapterWrapped for Box<T>
+impl<T: ?Sized> GetLinksWrapped for Box<T>
 where
-    Box<T>: Adapter,
+    Box<T>: GetLinks,
 {
-    type Wrapped = Box<<Box<T> as Adapter>::EntryType>;
+    type Wrapped = Box<<Box<T> as GetLinks>::EntryType>;
 }
 
-unsafe impl<T: Adapter + ?Sized> Adapter for Box<T> {
+impl<T: GetLinks + ?Sized> GetLinks for Box<T> {
     type EntryType = T::EntryType;
-
-    #[inline]
-    fn to_links(data: &Self::EntryType) -> &Links<Self::EntryType> {
-        <T as Adapter>::to_links(data)
+    fn get_links(data: &Self::EntryType) -> &Links<Self::EntryType> {
+        <T as GetLinks>::get_links(data)
     }
 }
 
-impl<T: ?Sized> AdapterWrapped for Arc<T>
+impl<T: ?Sized> GetLinksWrapped for Arc<T>
 where
-    Arc<T>: Adapter,
+    Arc<T>: GetLinks,
 {
-    type Wrapped = Arc<<Arc<T> as Adapter>::EntryType>;
+    type Wrapped = Arc<<Arc<T> as GetLinks>::EntryType>;
 }
 
-unsafe impl<T: Adapter + ?Sized> Adapter for Arc<T> {
+impl<T: GetLinks + ?Sized> GetLinks for Arc<T> {
     type EntryType = T::EntryType;
 
-    #[inline]
-    fn to_links(data: &Self::EntryType) -> &Links<Self::EntryType> {
-        <T as Adapter>::to_links(data)
+    fn get_links(data: &Self::EntryType) -> &Links<Self::EntryType> {
+        <T as GetLinks>::get_links(data)
     }
 }
 
@@ -125,21 +109,20 @@ unsafe impl<T: Adapter + ?Sized> Adapter for Arc<T> {
 ///
 /// Elements in the list are wrapped and ownership is transferred to the list while the element is
 /// in the list.
-pub struct List<G: AdapterWrapped> {
-    list: unsafe_list::List<G>,
+pub struct List<G: GetLinksWrapped> {
+    list: RawList<G>,
 }
 
-impl<G: AdapterWrapped> List<G> {
+impl<G: GetLinksWrapped> List<G> {
     /// Constructs a new empty linked list.
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
         Self {
-            list: unsafe_list::List::new(),
+            list: RawList::new(),
         }
     }
 
     /// Returns whether the list is empty.
-    #[inline]
-    pub const fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.list.is_empty()
     }
 
@@ -151,7 +134,11 @@ impl<G: AdapterWrapped> List<G> {
         let ptr = data.into_pointer();
 
         // SAFETY: We took ownership of the entry, so it is safe to insert it.
-        unsafe { self.list.push_back(ptr.as_ref()) }
+        if !unsafe { self.list.push_back(ptr.as_ref()) } {
+            // If insertion failed, rebuild object so that it can be freed.
+            // SAFETY: We just called `into_pointer` above.
+            unsafe { G::Wrapped::from_pointer(ptr) };
+        }
     }
 
     /// Inserts the given object after `existing`.
@@ -164,57 +151,97 @@ impl<G: AdapterWrapped> List<G> {
     /// Callers must ensure that `existing` points to a valid entry that is on the list.
     pub unsafe fn insert_after(&mut self, existing: NonNull<G::EntryType>, data: G::Wrapped) {
         let ptr = data.into_pointer();
-        unsafe { self.list.insert_after(existing, ptr.as_ref()) }
+        let entry = unsafe { &*existing.as_ptr() };
+        if unsafe { !self.list.insert_after(entry, ptr.as_ref()) } {
+            // If insertion failed, rebuild object so that it can be freed.
+            unsafe { G::Wrapped::from_pointer(ptr) };
+        }
     }
 
     /// Removes the given entry.
     ///
     /// # Safety
     ///
-    /// Callers must ensure that `data` is either on this list. It being on another
+    /// Callers must ensure that `data` is either on this list or in no list. It being on another
     /// list leads to memory unsafety.
     pub unsafe fn remove(&mut self, data: &G::Wrapped) -> Option<G::Wrapped> {
         let entry_ref = Wrapper::as_ref(data);
-        unsafe { self.list.remove(entry_ref) };
-        Some(unsafe { G::Wrapped::from_pointer(NonNull::from(entry_ref)) })
+        if unsafe { self.list.remove(entry_ref) } {
+            Some(unsafe { G::Wrapped::from_pointer(NonNull::from(entry_ref)) })
+        } else {
+            None
+        }
     }
 
     /// Removes the element currently at the front of the list and returns it.
     ///
     /// Returns `None` if the list is empty.
     pub fn pop_front(&mut self) -> Option<G::Wrapped> {
-        let entry_ref = unsafe { self.list.front()?.as_ref() };
-        unsafe { self.list.remove(entry_ref) };
-        Some(unsafe { G::Wrapped::from_pointer(NonNull::from(entry_ref)) })
-    }
-
-    /// Returns the first element of the list, if one exists.
-    #[inline]
-    pub fn front(&self) -> Option<&G::EntryType> {
-        self.list.front().map(|ptr| unsafe { ptr.as_ref() })
-    }
-
-    /// Returns the last element of the list, if one exists.
-    #[inline]
-    pub fn back(&self) -> Option<&G::EntryType> {
-        self.list.back().map(|ptr| unsafe { ptr.as_ref() })
+        let front = self.list.pop_front()?;
+        // SAFETY: Elements on the list were inserted after a call to `into_pointer `.
+        Some(unsafe { G::Wrapped::from_pointer(front) })
     }
 
     /// Returns a cursor starting on the first (front) element of the list.
-    #[inline]
     pub fn cursor_front(&self) -> Cursor<'_, G> {
         self.list.cursor_front()
     }
+
+    /// Returns a mutable cursor starting on the first (front) element of the list.
+    pub fn cursor_front_mut(&mut self) -> CursorMut<'_, G> {
+        CursorMut::new(self.list.cursor_front_mut())
+    }
 }
 
-impl<G: AdapterWrapped> Default for List<G> {
+impl<G: GetLinksWrapped> Default for List<G> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<G: AdapterWrapped> Drop for List<G> {
+impl<G: GetLinksWrapped> Drop for List<G> {
     fn drop(&mut self) {
-        while self.pop_front().is_some() {}
+        while self.pop_front().is_some() {}
+    }
+}
+
+/// A list cursor that allows traversing a linked list and inspecting & mutating elements.
+pub struct CursorMut<'a, G: GetLinksWrapped> {
+    cursor: raw_list::CursorMut<'a, G>,
+}
+
+impl<'a, G: GetLinksWrapped> CursorMut<'a, G> {
+    fn new(cursor: raw_list::CursorMut<'a, G>) -> Self {
+        Self { cursor }
+    }
+
+    /// Returns the element the cursor is currently positioned on.
+    pub fn current(&mut self) -> Option<&mut G::EntryType> {
+        self.cursor.current()
+    }
+
+    /// Removes the element the cursor is currently positioned on.
+    ///
+    /// After removal, it advances the cursor to the next element.
+    pub fn remove_current(&mut self) -> Option<G::Wrapped> {
+        let ptr = self.cursor.remove_current()?;
+
+        // SAFETY: Elements on the list were inserted after a call to `into_pointer `.
+        Some(unsafe { G::Wrapped::from_pointer(ptr) })
+    }
+
+    /// Returns the element immediately after the one the cursor is positioned on.
+    pub fn peek_next(&mut self) -> Option<&mut G::EntryType> {
+        self.cursor.peek_next()
+    }
+
+    /// Returns the element immediately before the one the cursor is positioned on.
+    pub fn peek_prev(&mut self) -> Option<&mut G::EntryType> {
+        self.cursor.peek_prev()
+    }
+
+    /// Moves the cursor to the next element.
+    pub fn move_next(&mut self) {
+        self.cursor.move_next();
     }
 }
