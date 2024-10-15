@@ -92,6 +92,7 @@ mod raw_list;
 pub use linked_list::List;
 pub use raw_list::{GetLinks, Links};
 
+#[allow(missing_docs)]
 #[macro_export]
 macro_rules! def_node {
     ($struct_name:ident, $type:ty) => {
@@ -130,6 +131,7 @@ macro_rules! def_node {
     };
 }
 
+#[allow(missing_docs)]
 #[macro_export]
 macro_rules! def_generic_node {
     ($struct_name:ident) => {
