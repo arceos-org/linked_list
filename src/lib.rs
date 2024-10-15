@@ -33,6 +33,10 @@
 //!             links: Links::new()
 //!         }
 //!     }
+//!
+//!     fn inner(&self) -> &InnerType {
+//!         &self.inner
+//!     }
 //! }
 //!
 //! let node1 = Box::new(ExampleNode::new(0));
@@ -44,12 +48,12 @@
 //!
 //! //Support Iter
 //! for (i,e) in list.iter().enumerate() {
-//!     assert!(e.inner == i);
+//!     assert!(*e.inner() == i);
 //! }
 //!
 //! // Pop drop
-//! assert!(list.pop_front().unwrap().inner == 0);
-//! assert!(list.pop_front().unwrap().inner == 1);
+//! assert!(*list.pop_front().unwrap().inner() == 0);
+//! assert!(*list.pop_front().unwrap().inner() == 1);
 //!
 //! ```
 //!
@@ -67,7 +71,7 @@
 //! list.push_back(node2);
 //!
 //! for (i,e) in list.iter().enumerate() {
-//!     assert!(e.inner == i);
+//!     assert!(*e.inner() == i);
 //! }
 //!
 //! def_generic_node!(GenericExampleNode);
@@ -81,7 +85,7 @@
 //!
 //! //Support Iter
 //! for (i,e) in list.iter().enumerate() {
-//!     assert!(e.inner == i);
+//!     assert!(*e.inner() == i);
 //! }
 //! ```
 
@@ -98,7 +102,7 @@ macro_rules! def_node {
     ($struct_name:ident, $type:ty) => {
         #[doc = concat!("Struct ", stringify!($struct_name),"is a Node wrapper for type ", stringify!($type))]
         pub struct $struct_name {
-            pub inner: $type,
+            inner: $type,
             links: $crate::Links<Self>,
         }
 
@@ -117,6 +121,11 @@ macro_rules! def_node {
                     inner,
                     links: $crate::Links::new(),
                 }
+            }
+
+            #[inline]
+            pub fn inner(&self) -> &$type {
+                &self.inner
             }
         }
 
@@ -156,6 +165,11 @@ macro_rules! def_generic_node {
                     inner,
                     links: $crate::Links::new(),
                 }
+            }
+
+            #[inline]
+            pub fn inner(&self) -> &T {
+                &self.inner
             }
         }
 
