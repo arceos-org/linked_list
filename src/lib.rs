@@ -51,9 +51,39 @@
 //! assert!(list.pop_front().unwrap().inner == 0);
 //! assert!(list.pop_front().unwrap().inner == 1);
 //!
-//!
 //! ```
 //!
+//! use def_list_node macro
+//! ```
+//! use linked_list::{def_node, def_generic_node, List};
+//!
+//! def_node!(ExampleNode, usize);
+//!
+//! let node1 = Box::new(ExampleNode::new(0));
+//! let node2 = Box::new(ExampleNode::new(1));
+//! let mut list =  List::<Box<ExampleNode>>::new();
+//!
+//! list.push_back(node1);
+//! list.push_back(node2);
+//!
+//! for (i,e) in list.iter().enumerate() {
+//!     assert!(e.inner == i);
+//! }
+//!
+//! def_generic_node!(GenericExampleNode);
+//!
+//! let node1 = Box::new(GenericExampleNode::new(0));
+//! let node2 = Box::new(GenericExampleNode::new(1));
+//! let mut list = List::<Box<GenericExampleNode<usize>>>::new();
+//!
+//! list.push_back(node1);
+//! list.push_back(node2);
+//!
+//! //Support Iter
+//! for (i,e) in list.iter().enumerate() {
+//!     assert!(e.inner == i);
+//! }
+//! ```
 
 #![cfg_attr(not(test), no_std)]
 
@@ -61,3 +91,81 @@ mod linked_list;
 mod raw_list;
 pub use linked_list::List;
 pub use raw_list::{GetLinks, Links};
+
+#[macro_export]
+macro_rules! def_node {
+    ($struct_name:ident, $type:ty) => {
+        #[doc = concat!("Struct ", stringify!($struct_name),
+                    "is a Node wrapper for type ", stringify!($type))]
+        pub struct $struct_name {
+            pub inner: $type,
+            links: $crate::Links<Self>,
+        }
+
+        impl $crate::GetLinks for $struct_name {
+            type EntryType = Self;
+
+            #[inline]
+            fn get_links(t: &Self) -> &$crate::Links<Self> {
+                &t.links
+            }
+        }
+
+        impl $struct_name {
+            pub const fn new(inner: $type) -> Self {
+                Self {
+                    inner,
+                    links: $crate::Links::new(),
+                }
+            }
+        }
+
+        impl core::ops::Deref for $struct_name {
+            type Target = $type;
+
+            #[inline]
+            fn deref(&self) -> &Self::Target {
+                &self.inner
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! def_generic_node {
+    ($struct_name:ident) => {
+        #[doc = concat!("Struct ", stringify!($struct_name),
+                    "is a Node wrapper include a generic type")]
+        pub struct $struct_name<T> {
+            pub inner: T,
+            links: $crate::Links<Self>,
+        }
+
+        impl<T> $crate::GetLinks for $struct_name<T> {
+            type EntryType = Self;
+
+            #[inline]
+            fn get_links(t: &Self) -> &$crate::Links<Self> {
+                &t.links
+            }
+        }
+
+        impl<T> $struct_name<T> {
+            pub const fn new(inner: T) -> Self {
+                Self {
+                    inner,
+                    links: $crate::Links::new(),
+                }
+            }
+        }
+
+        impl<T> core::ops::Deref for $struct_name<T> {
+            type Target = T;
+
+            #[inline]
+            fn deref(&self) -> &Self::Target {
+                &self.inner
+            }
+        }
+    };
+}
