@@ -2,15 +2,18 @@
 
 //! Linked lists.
 //!
+//! Based on linux/rust/kernel/linked_list.rs
+//!
 //! TODO: This module is a work in progress.
 
-use alloc::boxed::Box;
-use core::ptr::NonNull;
+extern crate alloc;
 
-pub use crate::raw_list::{Cursor, GetLinks, Links};
-use crate::{raw_list, raw_list::RawList, sync::Arc};
+use alloc::{boxed::Box, sync::Arc};
+use core::{iter, ptr::NonNull};
 
-// TODO: Use the one from `kernel::file_operations::ForeignOwnable` instead.
+use crate::{raw_list, raw_list::RawList, GetLinks, Links};
+
+// TODO: Use the one from `kernel::file_operations::PointerWrapper` instead.
 /// Wraps an object to be inserted in a linked list.
 pub trait Wrapper<T: ?Sized> {
     /// Converts the wrapped object into a pointer that represents it.
@@ -28,43 +31,52 @@ pub trait Wrapper<T: ?Sized> {
 }
 
 impl<T: ?Sized> Wrapper<T> for Box<T> {
+    #[inline]
     fn into_pointer(self) -> NonNull<T> {
         NonNull::new(Box::into_raw(self)).unwrap()
     }
 
+    #[inline]
     unsafe fn from_pointer(ptr: NonNull<T>) -> Self {
         unsafe { Box::from_raw(ptr.as_ptr()) }
     }
 
+    #[inline]
     fn as_ref(&self) -> &T {
         AsRef::as_ref(self)
     }
 }
 
 impl<T: ?Sized> Wrapper<T> for Arc<T> {
+    #[inline]
     fn into_pointer(self) -> NonNull<T> {
         NonNull::new(Arc::into_raw(self) as _).unwrap()
     }
 
+    #[inline]
     unsafe fn from_pointer(ptr: NonNull<T>) -> Self {
         // SAFETY: The safety requirements of `from_pointer` satisfy the ones from `Arc::from_raw`.
         unsafe { Arc::from_raw(ptr.as_ptr() as _) }
     }
 
+    #[inline]
     fn as_ref(&self) -> &T {
         AsRef::as_ref(self)
     }
 }
 
 impl<T: ?Sized> Wrapper<T> for &T {
+    #[inline]
     fn into_pointer(self) -> NonNull<T> {
         NonNull::from(self)
     }
 
+    #[inline]
     unsafe fn from_pointer(ptr: NonNull<T>) -> Self {
         unsafe { &*ptr.as_ptr() }
     }
 
+    #[inline]
     fn as_ref(&self) -> &T {
         self
     }
@@ -100,6 +112,7 @@ where
 impl<T: GetLinks + ?Sized> GetLinks for Arc<T> {
     type EntryType = T::EntryType;
 
+    #[inline]
     fn get_links(data: &Self::EntryType) -> &Links<Self::EntryType> {
         <T as GetLinks>::get_links(data)
     }
@@ -115,10 +128,15 @@ pub struct List<G: GetLinksWrapped> {
 
 impl<G: GetLinksWrapped> List<G> {
     /// Constructs a new empty linked list.
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             list: RawList::new(),
         }
+    }
+
+    /// Returns an iterator for the list starting at the first entry.
+    pub fn iter(&self) -> Iterator<'_, G> {
+        Iterator::new(self)
     }
 
     /// Returns whether the list is empty.
@@ -149,9 +167,9 @@ impl<G: GetLinksWrapped> List<G> {
     /// # Safety
     ///
     /// Callers must ensure that `existing` points to a valid entry that is on the list.
-    pub unsafe fn insert_after(&mut self, existing: NonNull<G::EntryType>, data: G::Wrapped) {
+    pub unsafe fn insert_after(&mut self, existing: &G::Wrapped, data: G::Wrapped) {
         let ptr = data.into_pointer();
-        let entry = unsafe { &*existing.as_ptr() };
+        let entry = Wrapper::as_ref(existing);
         if unsafe { !self.list.insert_after(entry, ptr.as_ref()) } {
             // If insertion failed, rebuild object so that it can be freed.
             unsafe { G::Wrapped::from_pointer(ptr) };
@@ -182,11 +200,6 @@ impl<G: GetLinksWrapped> List<G> {
         Some(unsafe { G::Wrapped::from_pointer(front) })
     }
 
-    /// Returns a cursor starting on the first (front) element of the list.
-    pub fn cursor_front(&self) -> Cursor<'_, G> {
-        self.list.cursor_front()
-    }
-
     /// Returns a mutable cursor starting on the first (front) element of the list.
     pub fn cursor_front_mut(&mut self) -> CursorMut<'_, G> {
         CursorMut::new(self.list.cursor_front_mut())
@@ -201,7 +214,7 @@ impl<G: GetLinksWrapped> Default for List<G> {
 
 impl<G: GetLinksWrapped> Drop for List<G> {
     fn drop(&mut self) {
-        while self.pop_front().is_some() {}
+        while self.pop_front().is_some() {}
     }
 }
 
@@ -226,7 +239,7 @@ impl<'a, G: GetLinksWrapped> CursorMut<'a, G> {
     pub fn remove_current(&mut self) -> Option<G::Wrapped> {
         let ptr = self.cursor.remove_current()?;
 
-        // SAFETY: Elements on the list were inserted after a call to `into_pointer `.
+        // SAFETY: Elements on the list were inserted after a call to `into_pointer `.
         Some(unsafe { G::Wrapped::from_pointer(ptr) })
     }
 
@@ -243,5 +256,83 @@ impl<'a, G: GetLinksWrapped> CursorMut<'a, G> {
     /// Moves the cursor to the next element.
     pub fn move_next(&mut self) {
         self.cursor.move_next();
+    }
+}
+
+/// An iterator for the linked list.
+pub struct Iterator<'a, G: GetLinksWrapped> {
+    iter: raw_list::Iterator<'a, G>,
+}
+
+impl<'a, G: GetLinksWrapped> Iterator<'a, G> {
+    fn new(list: &'a List<G>) -> Self {
+        Self {
+            iter: list.list.iter(),
+        }
+    }
+}
+
+impl<'a, G: GetLinksWrapped> iter::Iterator for Iterator<'a, G> {
+    type Item = &'a G::EntryType;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
+    }
+}
+
+impl<G: GetLinksWrapped> iter::DoubleEndedIterator for Iterator<'_, G> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.iter.next_back()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{GetLinks, Links, List};
+
+    struct Example {
+        inner: usize,
+        links: Links<Self>,
+    }
+
+    impl GetLinks for Example {
+        type EntryType = Self;
+        fn get_links(obj: &Self) -> &Links<Self> {
+            &obj.links
+        }
+    }
+
+    #[track_caller]
+    fn assert_list_contents(list: &List<Box<Example>>, n: usize) {
+        // Assert that the list is ok going forward.
+        let mut count = 0;
+        for (i, e) in list.iter().enumerate() {
+            assert_eq!(i + 1, e.inner);
+            count += 1;
+        }
+        assert_eq!(count, n);
+
+        // Assert that the list is ok going backwards.
+        let mut count = n;
+        for e in list.iter().rev() {
+            assert_eq!(count, e.inner);
+            count -= 1;
+        }
+        assert_eq!(count, 0);
+    }
+
+    #[track_caller]
+    #[test]
+    fn test_push_back() {
+        const MAX: usize = 10;
+        let mut list = List::<Box<Example>>::new();
+
+        for n in 1..=MAX {
+            list.push_back(Box::new(Example {
+                inner: n,
+                links: Links::new(),
+            }));
+        }
+        assert_list_contents(&list, MAX);
     }
 }

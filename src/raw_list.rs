@@ -8,7 +8,7 @@
 
 use core::{
     cell::UnsafeCell,
-    ptr,
+    iter, ptr,
     ptr::NonNull,
     sync::atomic::{AtomicBool, Ordering},
 };
@@ -37,9 +37,17 @@ pub struct Links<T: ?Sized> {
     entry: UnsafeCell<ListEntry<T>>,
 }
 
+// SAFETY: `Links` can be safely sent to other threads but we restrict it to being `Send` only when
+// the list entries it points to are also `Send`.
+unsafe impl<T: ?Sized> Send for Links<T> {}
+
+// SAFETY: `Links` is usable from other threads via references but we restrict it to being `Sync`
+// only when the list entries it points to are also `Sync`.
+unsafe impl<T: ?Sized> Sync for Links<T> {}
+
 impl<T: ?Sized> Links<T> {
     /// Constructs a new [`Links`] instance that isn't inserted on any lists yet.
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             inserted: AtomicBool::new(false),
             entry: UnsafeCell::new(ListEntry::new()),
@@ -69,7 +77,7 @@ struct ListEntry<T: ?Sized> {
 }
 
 impl<T: ?Sized> ListEntry<T> {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             next: None,
             prev: None,
@@ -87,8 +95,13 @@ pub(crate) struct RawList<G: GetLinks> {
 }
 
 impl<G: GetLinks> RawList<G> {
-    pub(crate) fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self { head: None }
+    }
+
+    /// Returns an iterator for the list starting at the first entry.
+    pub(crate) fn iter(&self) -> Iterator<'_, G> {
+        Iterator::new(self.cursor_front(), self.cursor_back())
     }
 
     pub(crate) fn is_empty(&self) -> bool {
@@ -220,23 +233,33 @@ impl<G: GetLinks> RawList<G> {
         Some(head)
     }
 
+    /// Get and Remove the first element of the list.
     pub(crate) fn pop_front(&mut self) -> Option<NonNull<G::EntryType>> {
         self.pop_front_internal()
     }
 
+    ///  Just Get and not remove the first element of the list.
     pub(crate) fn front(&self) -> Option<NonNull<G::EntryType>> {
         self.head
     }
 
+    /// Just Get and not remove the last element of the list.
     pub(crate) fn back(&self) -> Option<NonNull<G::EntryType>> {
         // SAFETY: The links of head are owned by the list, so it is safe to get a reference.
         unsafe { &*G::get_links(self.head?.as_ref()).entry.get() }.prev
     }
 
+    /// Returns a cursor starting on the first element of the list.
     pub(crate) fn cursor_front(&self) -> Cursor<'_, G> {
         Cursor::new(self, self.front())
     }
 
+    /// Returns a cursor starting on the last element of the list.
+    pub(crate) fn cursor_back(&self) -> Cursor<'_, G> {
+        Cursor::new(self, self.back())
+    }
+
+    /// Returns a mut cursor starting on the first element of the list.
     pub(crate) fn cursor_front_mut(&mut self) -> CursorMut<'_, G> {
         CursorMut::new(self, self.front())
     }
@@ -258,7 +281,7 @@ impl<G: GetLinks> CommonCursor<G> {
                 if let Some(head) = list.head {
                     // SAFETY: We have a shared ref to the linked list, so the links can't change.
                     let links = unsafe { &*G::get_links(cur.as_ref()).entry.get() };
-                    if links.next.unwrap() != head {
+                    if !ptr::addr_eq(links.next.unwrap().as_ptr(), head.as_ptr()) {
                         self.cur = links.next;
                     }
                 }
@@ -273,7 +296,7 @@ impl<G: GetLinks> CommonCursor<G> {
                 let next = match self.cur.take() {
                     None => head,
                     Some(cur) => {
-                        if cur == head {
+                        if ptr::addr_eq(cur.as_ptr(), head.as_ptr()) {
                             return;
                         }
                         cur
@@ -287,14 +310,22 @@ impl<G: GetLinks> CommonCursor<G> {
     }
 }
 
+// SAFETY: The list is itself can be safely sent to other threads but we restrict it to being `Send`
+// only when its entries are also `Send`.
+unsafe impl<G: GetLinks> Send for RawList<G> where G::EntryType: Send {}
+
+// SAFETY: The list is itself usable from other threads via references but we restrict it to being
+// `Sync` only when its entries are also `Sync`.
+unsafe impl<G: GetLinks> Sync for RawList<G> where G::EntryType: Sync {}
+
 /// A list cursor that allows traversing a linked list and inspecting elements.
-pub struct Cursor<'a, G: GetLinks> {
+pub(crate) struct Cursor<'a, G: GetLinks> {
     cursor: CommonCursor<G>,
     list: &'a RawList<G>,
 }
 
 impl<'a, G: GetLinks> Cursor<'a, G> {
-    fn new(list: &'a RawList<G>, cur: Option<NonNull<G::EntryType>>) -> Self {
+    pub(crate) fn new(list: &'a RawList<G>, cur: Option<NonNull<G::EntryType>>) -> Self {
         Self {
             list,
             cursor: CommonCursor::new(cur),
@@ -302,15 +333,21 @@ impl<'a, G: GetLinks> Cursor<'a, G> {
     }
 
     /// Returns the element the cursor is currently positioned on.
-    pub fn current(&self) -> Option<&'a G::EntryType> {
+    pub(crate) fn current(&self) -> Option<&'a G::EntryType> {
         let cur = self.cursor.cur?;
         // SAFETY: Objects must be kept alive while on the list.
         Some(unsafe { &*cur.as_ptr() })
     }
 
     /// Moves the cursor to the next element.
-    pub fn move_next(&mut self) {
+    pub(crate) fn move_next(&mut self) {
         self.cursor.move_next(self.list);
+    }
+
+    /// Moves the cursor to the prev element.
+    #[allow(dead_code)]
+    pub(crate) fn move_prev(&mut self) {
+        self.cursor.move_prev(self.list);
     }
 }
 
@@ -359,5 +396,167 @@ impl<'a, G: GetLinks> CursorMut<'a, G> {
 
     pub(crate) fn move_next(&mut self) {
         self.cursor.move_next(self.list);
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn move_prev(&mut self) {
+        self.cursor.move_prev(self.list);
+    }
+}
+
+impl<'a, G: GetLinks> iter::IntoIterator for &'a RawList<G> {
+    type Item = &'a G::EntryType;
+    type IntoIter = Iterator<'a, G>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+/// An iterator for the linked list.
+pub(crate) struct Iterator<'a, G: GetLinks> {
+    cursor_front: Cursor<'a, G>,
+    cursor_back: Cursor<'a, G>,
+}
+
+impl<'a, G: GetLinks> Iterator<'a, G> {
+    fn new(cursor_front: Cursor<'a, G>, cursor_back: Cursor<'a, G>) -> Self {
+        Self {
+            cursor_front,
+            cursor_back,
+        }
+    }
+}
+
+impl<'a, G: GetLinks> iter::Iterator for Iterator<'a, G> {
+    type Item = &'a G::EntryType;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let ret = self.cursor_front.current()?;
+        self.cursor_front.move_next();
+        Some(ret)
+    }
+}
+
+impl<G: GetLinks> iter::DoubleEndedIterator for Iterator<'_, G> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        let ret = self.cursor_back.current()?;
+        self.cursor_back.move_prev();
+        Some(ret)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    extern crate alloc;
+    use alloc::{boxed::Box, vec::Vec};
+
+    struct Example {
+        links: super::Links<Self>,
+    }
+
+    // SAFETY: This is the only adapter that uses `Example::links`.
+    impl super::GetLinks for Example {
+        type EntryType = Self;
+        fn get_links(obj: &Self) -> &super::Links<Self> {
+            &obj.links
+        }
+    }
+
+    fn build_vector(size: usize) -> Vec<Box<Example>> {
+        let mut v = Vec::new();
+        v.reserve(size);
+        for _ in 0..size {
+            v.push(Box::new(Example {
+                links: super::Links::new(),
+            }));
+        }
+        v
+    }
+
+    #[track_caller]
+    fn assert_list_contents(v: &[Box<Example>], list: &super::RawList<Example>) {
+        let n = v.len();
+
+        // Assert that the list is ok going forward.
+        let mut count = 0;
+        for (i, e) in list.iter().enumerate() {
+            assert!(core::ptr::eq(e, &*v[i]));
+            count += 1;
+        }
+        assert_eq!(count, n);
+
+        // Assert that the list is ok going backwards.
+        let mut count = 0;
+        for (i, e) in list.iter().rev().enumerate() {
+            assert!(core::ptr::eq(e, &*v[n - 1 - i]));
+            count += 1;
+        }
+        assert_eq!(count, n);
+    }
+
+    #[track_caller]
+    fn test_each_element(
+        min_len: usize,
+        max_len: usize,
+        test: impl Fn(&mut Vec<Box<Example>>, &mut super::RawList<Example>, usize, Box<Example>),
+    ) {
+        for n in min_len..=max_len {
+            for i in 0..n {
+                let extra = Box::new(Example {
+                    links: super::Links::new(),
+                });
+                let mut v = build_vector(n);
+                let mut list = super::RawList::<Example>::new();
+
+                // Build list.
+                for j in 0..n {
+                    // SAFETY: The entry was allocated above, it's not in any lists yet, is never
+                    // moved, and outlives the list.
+                    unsafe { list.push_back(&v[j]) };
+                }
+
+                // Call the test case.
+                test(&mut v, &mut list, i, extra);
+
+                // Check that the list is ok.
+                assert_list_contents(&v, &list);
+            }
+        }
+    }
+
+    #[test]
+    fn test_push_back() {
+        const MAX: usize = 10;
+        let v = build_vector(MAX);
+        let mut list = super::RawList::<Example>::new();
+
+        for n in 1..=MAX {
+            // SAFETY: The entry was allocated above, it's not in any lists yet, is never moved,
+            // and outlives the list.
+            unsafe { list.push_back(&v[n - 1]) };
+            assert_list_contents(&v[..n], &list);
+        }
+    }
+
+    #[test]
+    fn test_one_removal() {
+        test_each_element(1, 10, |v, list, i, _| {
+            // Remove the i-th element.
+            // SAFETY: The i-th element was added to the list above, and wasn't removed yet.
+            unsafe { list.remove(&v[i]) };
+            v.remove(i);
+        });
+    }
+
+    #[test]
+    fn test_one_insert_after() {
+        test_each_element(1, 10, |v, list, i, extra| {
+            // Insert after the i-th element.
+            // SAFETY: The i-th element was added to the list above, and wasn't removed yet.
+            // Additionally, the new element isn't in any list yet, isn't moved, and outlives
+            // the list.
+            unsafe { list.insert_after(&*v[i], &*extra) };
+            v.insert(i + 1, extra);
+        });
     }
 }
