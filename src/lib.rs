@@ -100,7 +100,7 @@ pub use raw_list::{GetLinks, Links};
 #[macro_export]
 macro_rules! def_node {
     ($struct_name:ident, $type:ty) => {
-        #[doc = concat!("Struct ", stringify!($struct_name),"is a Node wrapper for type ", stringify!($type))]
+        #[doc = "A node wrapper for inner type "]
         pub struct $struct_name {
             inner: $type,
             links: $crate::Links<Self>,
@@ -116,6 +116,7 @@ macro_rules! def_node {
         }
 
         impl $struct_name {
+            #[doc = "Create a node"]
             pub const fn new(inner: $type) -> Self {
                 Self {
                     inner,
@@ -124,6 +125,7 @@ macro_rules! def_node {
             }
 
             #[inline]
+            #[doc = "Get inner"]
             pub fn inner(&self) -> &$type {
                 &self.inner
             }
@@ -144,7 +146,7 @@ macro_rules! def_node {
 #[macro_export]
 macro_rules! def_generic_node {
     ($struct_name:ident) => {
-        #[doc = concat!("Struct ", stringify!($struct_name),"is a Node wrapper include a generic type")]
+        #[doc = "A node wrapper include a generic type"]
         pub struct $struct_name<T> {
             pub inner: T,
             links: $crate::Links<Self>,
@@ -160,6 +162,7 @@ macro_rules! def_generic_node {
         }
 
         impl<T> $struct_name<T> {
+            #[doc = "Create a node"]
             pub const fn new(inner: T) -> Self {
                 Self {
                     inner,
@@ -168,6 +171,7 @@ macro_rules! def_generic_node {
             }
 
             #[inline]
+            #[doc = "Get inner"]
             pub fn inner(&self) -> &T {
                 &self.inner
             }
