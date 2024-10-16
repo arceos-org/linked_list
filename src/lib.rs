@@ -148,7 +148,7 @@ macro_rules! def_generic_node {
     ($struct_name:ident) => {
         #[doc = "A node wrapper include a generic type"]
         pub struct $struct_name<T> {
-            pub inner: T,
+            inner: T,
             links: $crate::Links<Self>,
         }
 
