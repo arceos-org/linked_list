@@ -57,37 +57,6 @@
 //!
 //! ```
 //!
-//! use def_list_node macro
-//! ```
-//! use linked_list::{def_node, def_generic_node, List};
-//!
-//! def_node!(ExampleNode, usize);
-//!
-//! let node1 = Box::new(ExampleNode::new(0));
-//! let node2 = Box::new(ExampleNode::new(1));
-//! let mut list =  List::<Box<ExampleNode>>::new();
-//!
-//! list.push_back(node1);
-//! list.push_back(node2);
-//!
-//! for (i,e) in list.iter().enumerate() {
-//!     assert!(*e.inner() == i);
-//! }
-//!
-//! def_generic_node!(GenericExampleNode);
-//!
-//! let node1 = Box::new(GenericExampleNode::new(0));
-//! let node2 = Box::new(GenericExampleNode::new(1));
-//! let mut list = List::<Box<GenericExampleNode<usize>>>::new();
-//!
-//! list.push_back(node1);
-//! list.push_back(node2);
-//!
-//! //Support Iter
-//! for (i,e) in list.iter().enumerate() {
-//!     assert!(*e.inner() == i);
-//! }
-//! ```
 
 #![cfg_attr(not(test), no_std)]
 
@@ -96,7 +65,31 @@ mod raw_list;
 pub use linked_list::List;
 pub use raw_list::{GetLinks, Links};
 
-#[allow(missing_docs)]
+/// Defines a new node type that wraps an inner type and includes links for List.
+///
+/// # Parameters
+///
+/// - `struct_name`: The name of the struct to define.
+/// - `type`: The inner type to wrap.
+///
+/// # Example
+///
+/// ```rust
+/// use linked_list::{def_node, List};
+///
+/// def_node!(ExampleNode, usize);
+///
+/// let node1 = Box::new(ExampleNode::new(0));
+/// let node2 = Box::new(ExampleNode::new(1));
+/// let mut list =  List::<Box<ExampleNode>>::new();
+///
+/// list.push_back(node1);
+/// list.push_back(node2);
+///
+/// for (i,e) in list.iter().enumerate() {
+///     assert!(*e.inner() == i);
+/// }
+/// ```
 #[macro_export]
 macro_rules! def_node {
     ($struct_name:ident, $type:ty) => {
@@ -142,7 +135,32 @@ macro_rules! def_node {
     };
 }
 
-#[allow(missing_docs)]
+/// Defines a generic node type that wraps a generic inner type and includes links
+/// for List.
+///
+/// Similar to  [`def_node`], but inner type is generic Type
+///
+/// # Parameters
+///
+/// - `struct_name`: The name of the struct to define.
+///
+/// # Example
+///
+/// ```rust
+/// use linked_list::{def_generic_node, List};
+/// def_generic_node!(GenericExampleNode);
+///
+/// let node1 = Box::new(GenericExampleNode::new(0));
+/// let node2 = Box::new(GenericExampleNode::new(1));
+/// let mut list = List::<Box<GenericExampleNode<usize>>>::new();
+///
+/// list.push_back(node1);
+/// list.push_back(node2);
+///
+/// for (i,e) in list.iter().enumerate() {
+///     assert!(*e.inner() == i);
+/// }
+/// ```
 #[macro_export]
 macro_rules! def_generic_node {
     ($struct_name:ident) => {
