@@ -119,7 +119,7 @@ macro_rules! def_node {
 
             #[inline]
             #[doc = "Get inner"]
-            pub fn inner(&self) -> &$type {
+            pub const fn inner(&self) -> &$type {
                 &self.inner
             }
         }
@@ -190,7 +190,7 @@ macro_rules! def_generic_node {
 
             #[inline]
             #[doc = "Get inner"]
-            pub fn inner(&self) -> &T {
+            pub const fn inner(&self) -> &T {
                 &self.inner
             }
         }

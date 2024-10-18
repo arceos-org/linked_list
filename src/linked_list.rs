@@ -140,7 +140,7 @@ impl<G: GetLinksWrapped> List<G> {
     }
 
     /// Returns whether the list is empty.
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.list.is_empty()
     }
 

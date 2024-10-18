@@ -104,7 +104,7 @@ impl<G: GetLinks> RawList<G> {
         Iterator::new(self.cursor_front(), self.cursor_back())
     }
 
-    pub(crate) fn is_empty(&self) -> bool {
+    pub(crate) const fn is_empty(&self) -> bool {
         self.head.is_none()
     }
 
