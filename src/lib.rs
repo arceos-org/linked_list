@@ -9,7 +9,7 @@ pub use raw_list::{GetLinks, Links};
 #[macro_export(local_inner_macros)]
 #[doc(hidden)]
 macro_rules! __def_node_internal {
-    ($(#[$meta:meta])* ($($vis:tt)*) struct $name:ident($type:ty);) => {
+    ($(#[$meta:meta])* ($($vis:tt)*) struct $name:ident{$type:ty};) => {
         $(#[$meta])*
         $($vis)* struct $name {
             inner: $type,
@@ -51,7 +51,7 @@ macro_rules! __def_node_internal {
         }
     };
 
-    ($(#[$meta:meta])* ($($vis:tt)*) struct $name:ident<$gen:ident>($type:ty); $($t:tt)*) => {
+    ($(#[$meta:meta])* ($($vis:tt)*) struct $name:ident<$gen:ident>{$type:ty};) => {
         $(#[$meta])*
         $($vis)* struct $name<$gen> {
             inner: $type,
@@ -114,9 +114,11 @@ macro_rules! __def_node_internal {
 ///
 /// def_node!(
 ///     /// An example Node with usize
-///     struct ExampleNode(usize);
-///     /// An example Node with generic Inner type
-///     struct GenericNode<T>(T);
+///     struct ExampleNode{usize};
+///     /// An example Node with generic Inner type and pub(crate)
+///     pub(crate) struct NativeGenericNode{usize};
+///     /// An example Node with generic Inner type and pub vis
+///     pub struct GenericNode<T>{T};
 /// );
 ///
 /// let node1 = Box::new(ExampleNode::new(0));
@@ -144,34 +146,14 @@ macro_rules! __def_node_internal {
 ///
 #[macro_export(local_inner_macros)]
 macro_rules! def_node {
-    ($(#[$meta:meta])* struct $name:ident($type:ty); $($t:tt)*) => {
-        __def_node_internal!($(#[$meta])* () struct $name($type););
-        def_node!($($t)*);
-
-    };
-    ($(#[$meta:meta])* pub struct $name:ident($type:ty); $($t:tt)*) => {
-        __def_node_internal!($(#[$meta])* (pub) struct $name($type);$($t)*);
-        def_node!($($t)*);
-
-    };
-    ($(#[$meta:meta])* pub ($($vis:tt)+) struct $name:ident($type:ty); $($t:tt)*) => {
-        __def_node_internal!($(#[$meta])* (pub ($($vis)+)) struct $name($type);$($t)*);
+    ($(#[$meta:meta])* $sv:vis struct $name:ident{$type:ty}; $($t:tt)*) => {
+        __def_node_internal!($(#[$meta])* ($sv) struct $name{$type};);
         def_node!($($t)*);
 
     };
 
-    ($(#[$meta:meta])* struct $name:ident<$gen:ident>($type:ty); $($t:tt)*) => {
-        __def_node_internal!($(#[$meta])* () struct $name<$gen>($type); $($t)*);
-        def_node!($($t)*);
-
-    };
-    ($(#[$meta:meta])* pub struct $name:ident<$gen:ident>($type:ty); $($t:tt)*) => {
-        __def_node_internal!($(#[$meta])* (pub) struct $name<$gen>($type);$($t)*);
-        def_node!($($t)*);
-
-    };
-    ($(#[$meta:meta])* pub ($($vis:tt)+) struct $name:ident<$gen:ident>($type:ty); $($t:tt)*) => {
-        __def_node_internal!($(#[$meta])* (pub ($($vis)+)) struct $name<$gen>($type);$($t)*);
+    ($(#[$meta:meta])* $sv:vis struct $name:ident<$gen:ident>{$type:ty}; $($t:tt)*) => {
+        __def_node_internal!($(#[$meta])* ($sv) struct $name<$gen>{$type};);
         def_node!($($t)*);
 
     };
