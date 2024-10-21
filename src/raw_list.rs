@@ -270,7 +270,7 @@ struct CommonCursor<G: GetLinks> {
 }
 
 impl<G: GetLinks> CommonCursor<G> {
-    fn new(cur: Option<NonNull<G::EntryType>>) -> Self {
+    const fn new(cur: Option<NonNull<G::EntryType>>) -> Self {
         Self { cur }
     }
 
@@ -419,7 +419,7 @@ pub(crate) struct Iterator<'a, G: GetLinks> {
 }
 
 impl<'a, G: GetLinks> Iterator<'a, G> {
-    fn new(cursor_front: Cursor<'a, G>, cursor_back: Cursor<'a, G>) -> Self {
+    const fn new(cursor_front: Cursor<'a, G>, cursor_back: Cursor<'a, G>) -> Self {
         Self {
             cursor_front,
             cursor_back,
