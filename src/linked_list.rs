@@ -97,6 +97,8 @@ where
 
 impl<T: GetLinks + ?Sized> GetLinks for Box<T> {
     type EntryType = T::EntryType;
+
+    #[inline]
     fn get_links(data: &Self::EntryType) -> &Links<Self::EntryType> {
         <T as GetLinks>::get_links(data)
     }
@@ -224,7 +226,7 @@ pub struct CursorMut<'a, G: GetLinksWrapped> {
 }
 
 impl<'a, G: GetLinksWrapped> CursorMut<'a, G> {
-    fn new(cursor: raw_list::CursorMut<'a, G>) -> Self {
+    const fn new(cursor: raw_list::CursorMut<'a, G>) -> Self {
         Self { cursor }
     }
 
