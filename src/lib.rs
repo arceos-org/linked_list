@@ -154,6 +154,11 @@ macro_rules! def_node {
         def_node!($($t)*);
 
     };
+    ($(#[$meta:meta])* pub ($($vis:tt)+) struct $name:ident($type:ty); $($t:tt)*) => {
+        __def_node_internal!($(#[$meta])* (pub ($($vis)+)) struct $name($type);$($t)*);
+        def_node!($($t)*);
+
+    };
 
     ($(#[$meta:meta])* struct $name:ident<$gen:ident>($type:ty); $($t:tt)*) => {
         __def_node_internal!($(#[$meta])* () struct $name<$gen>($type); $($t)*);
@@ -162,6 +167,11 @@ macro_rules! def_node {
     };
     ($(#[$meta:meta])* pub struct $name:ident<$gen:ident>($type:ty); $($t:tt)*) => {
         __def_node_internal!($(#[$meta])* (pub) struct $name<$gen>($type);$($t)*);
+        def_node!($($t)*);
+
+    };
+    ($(#[$meta:meta])* pub ($($vis:tt)+) struct $name:ident<$gen:ident>($type:ty); $($t:tt)*) => {
+        __def_node_internal!($(#[$meta])* (pub ($($vis)+)) struct $name<$gen>($type);$($t)*);
         def_node!($($t)*);
 
     };
