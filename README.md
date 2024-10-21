@@ -6,10 +6,6 @@
 
  [1]: https://github.com/Rust-for-Linux/linux/blob/rust/rust/kernel/linked_list.rs
 
- In more general use cases, shoud not use [`RawList`] directly,
- suggest use smart pointers of nodes and move ownership of smart
- pointers to List.
-
 ## Examples 
 
  ```rust
