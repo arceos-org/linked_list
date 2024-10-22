@@ -42,7 +42,7 @@ macro_rules! __def_node_internal {
 
             #[inline]
             #[doc = "Consumes the `node`, returning the wrapped inner"]
-            pub const fn into_inner(self) -> $type {
+            pub fn into_inner(self) -> $type {
                 self.inner
             }
         }
