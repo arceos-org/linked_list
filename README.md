@@ -1,5 +1,9 @@
 # LinkedList
 
+[![Crates.io](https://img.shields.io/crates/v/linked_list)](https://crates.io/crates/linked_list)
+[![Doc.rs](https://docs.rs/linked_list/badge.svg)](https://docs.rs/linked_list)
+[![CI](https://github.com/arceos-org/linked_list/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/arceos-org/linked_list/actions/workflows/ci.yml)
+
  Linked lists that supports arbitrary removal in constant time.
 
  It is based on the linked list implementation in [Rust-for-Linux][1].
@@ -46,7 +50,7 @@
  list.push_back(node1);
  list.push_back(node2);
 
- //Support Iter
+ // Support Iter
  for (i,e) in list.iter().enumerate() {
      assert!(*e.inner() == i);
  }

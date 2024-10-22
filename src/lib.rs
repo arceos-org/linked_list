@@ -9,7 +9,7 @@ pub use raw_list::{GetLinks, Links};
 #[macro_export(local_inner_macros)]
 #[doc(hidden)]
 macro_rules! __def_node_internal {
-    ($(#[$meta:meta])* ($($vis:tt)*) struct $name:ident{$type:ty};) => {
+    ($(#[$meta:meta])* ($($vis:tt)*) struct $name:ident($type:ty);) => {
         $(#[$meta])*
         $($vis)* struct $name {
             inner: $type,
@@ -35,9 +35,15 @@ macro_rules! __def_node_internal {
             }
 
             #[inline]
-            #[doc = "Get inner"]
+            #[doc = "Return the referece of wrapped inner"]
             $($vis)* const fn inner(&self) -> &$type {
                 &self.inner
+            }
+
+            #[inline]
+            #[doc = "Consumes the `node`, returning the wrapped inner"]
+            $($vis)* fn into_inner(self) -> $type {
+                self.inner
             }
         }
 
@@ -51,7 +57,7 @@ macro_rules! __def_node_internal {
         }
     };
 
-    ($(#[$meta:meta])* ($($vis:tt)*) struct $name:ident<$gen:ident>{$type:ty};) => {
+    ($(#[$meta:meta])* ($($vis:tt)*) struct $name:ident<$gen:ident>($type:ty);) => {
         $(#[$meta])*
         $($vis)* struct $name<$gen> {
             inner: $type,
@@ -77,9 +83,15 @@ macro_rules! __def_node_internal {
             }
 
             #[inline]
-            #[doc = "Get inner"]
+            #[doc = "Return the referece of wrapped inner"]
             $($vis)* const fn inner(&self) -> &$type {
                 &self.inner
+            }
+
+            #[inline]
+            #[doc = "Consumes the `node`, returning the wrapped inner"]
+            $($vis)* fn into_inner(self) -> $type {
+                self.inner
             }
         }
 
@@ -112,14 +124,14 @@ macro_rules! __def_node_internal {
 /// ```rust
 /// use linked_list::{def_node, List};
 ///
-/// def_node!(
+/// def_node!{
 ///     /// An example Node with usize
-///     struct ExampleNode{usize};
+///     struct ExampleNode(usize);
 ///     /// An example Node with generic Inner type and pub(crate)
-///     pub(crate) struct NativeGenericNode{usize};
+///     pub(crate) struct NativeGenericNode(usize);
 ///     /// An example Node with generic Inner type and pub vis
-///     pub struct GenericNode<T>{T};
-/// );
+///     pub struct GenericNode<T>(T);
+/// }
 ///
 /// let node1 = Box::new(ExampleNode::new(0));
 /// let node2 = Box::new(ExampleNode::new(1));
@@ -131,9 +143,17 @@ macro_rules! __def_node_internal {
 /// for (i,e) in list.iter().enumerate() {
 ///     assert!(*e.inner() == i);
 /// }
+/// 
+/// let node1 = list.pop_front().unwrap();
+/// let node2 = list.pop_front().unwrap();
+///
+/// assert!(node1.into_inner() == 0);
+/// assert!(node2.into_inner() == 1);
+/// assert!(list.pop_front().is_none());
 ///
 /// let node1 = Box::new(GenericNode::new(0));
 /// let node2 = Box::new(GenericNode::new(1));
+///
 /// let mut list =  List::<Box<GenericNode<usize>>>::new();
 ///
 /// list.push_back(node1);
@@ -146,16 +166,13 @@ macro_rules! __def_node_internal {
 ///
 #[macro_export(local_inner_macros)]
 macro_rules! def_node {
-    ($(#[$meta:meta])* $sv:vis struct $name:ident{$type:ty}; $($t:tt)*) => {
-        __def_node_internal!($(#[$meta])* ($sv) struct $name{$type};);
+    ($(#[$meta:meta])* $vis:vis struct $name:ident($type:ty); $($t:tt)*) => {
+        __def_node_internal!($(#[$meta])* ($vis) struct $name($type););
         def_node!($($t)*);
-
     };
-
-    ($(#[$meta:meta])* $sv:vis struct $name:ident<$gen:ident>{$type:ty}; $($t:tt)*) => {
-        __def_node_internal!($(#[$meta])* ($sv) struct $name<$gen>{$type};);
+    ($(#[$meta:meta])* $vis:vis struct $name:ident<$gen:ident>($type:ty); $($t:tt)*) => {
+        __def_node_internal!($(#[$meta])* ($vis) struct $name<$gen>($type););
         def_node!($($t)*);
-
     };
     () => ()
 }
