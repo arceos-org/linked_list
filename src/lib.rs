@@ -122,7 +122,7 @@ macro_rules! __def_node_internal {
 /// # Example
 ///
 /// ```rust
-/// use linked_list::{def_node, List};
+/// use linked_list_r4l::{def_node, List};
 ///
 /// def_node!{
 ///     /// An example Node with usize

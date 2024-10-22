@@ -13,7 +13,7 @@
 ## Examples 
 
  ```rust
- use linked_list::{GetLinks, Links, List};
+ use linked_list_r4l::{GetLinks, Links, List};
 
  type InnerType = usize;
 
