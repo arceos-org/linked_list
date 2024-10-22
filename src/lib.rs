@@ -27,7 +27,7 @@ macro_rules! __def_node_internal {
 
         impl $name {
             #[doc = "Create a node"]
-            $vis const fn new(inner: $type) -> Self {
+            pub const fn new(inner: $type) -> Self {
                 Self {
                     inner,
                     links: $crate::Links::new(),
@@ -36,13 +36,13 @@ macro_rules! __def_node_internal {
 
             #[inline]
             #[doc = "Return the referece of wrapped inner"]
-            $vis const fn inner(&self) -> &$type {
+            pub const fn inner(&self) -> &$type {
                 &self.inner
             }
 
             #[inline]
             #[doc = "Consumes the `node`, returning the wrapped inner"]
-            $vis fn into_inner(self) -> $type {
+            pub const fn into_inner(self) -> $type {
                 self.inner
             }
         }
@@ -75,7 +75,7 @@ macro_rules! __def_node_internal {
 
         impl<$gen> $name<$gen> {
             #[doc = "Create a node"]
-            $vis const fn new(inner: $type) -> Self {
+            pub const fn new(inner: $type) -> Self {
                 Self {
                     inner,
                     links: $crate::Links::new(),
@@ -84,13 +84,13 @@ macro_rules! __def_node_internal {
 
             #[inline]
             #[doc = "Return the referece of wrapped inner"]
-            $vis const fn inner(&self) -> &$type {
+            pub const fn inner(&self) -> &$type {
                 &self.inner
             }
 
             #[inline]
             #[doc = "Consumes the `node`, returning the wrapped inner"]
-            $vis fn into_inner(self) -> $type {
+            pub fn into_inner(self) -> $type {
                 self.inner
             }
         }

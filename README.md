@@ -2,7 +2,7 @@
 
 [![Crates.io](https://img.shields.io/crates/v/linked_list_r4l)](https://crates.io/crates/linked_list_r4l)
 [![Doc.rs](https://docs.rs/linked_list_r4l/badge.svg)](https://docs.rs/linked_list_r4l)
-[![CI](https://github.com/arceos-org/linked_list/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/arceos-org/linked_list/actions/workflows/ci.yml)
+[![CI](https://github.com/arceos-org/linked_list_r4l/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/arceos-org/linked_list_r4l/actions/workflows/ci.yml)
 
  Linked lists that supports arbitrary removal in constant time.
 
