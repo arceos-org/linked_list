@@ -143,7 +143,7 @@ macro_rules! __def_node_internal {
 /// for (i,e) in list.iter().enumerate() {
 ///     assert!(*e.inner() == i);
 /// }
-/// 
+///
 /// let node1 = list.pop_front().unwrap();
 /// let node2 = list.pop_front().unwrap();
 ///
