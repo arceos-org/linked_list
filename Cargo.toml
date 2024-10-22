@@ -1,5 +1,5 @@
 [package]
-name = "linked_list"
+name = "linked_list_r4l"
 version = "0.1.0"
 edition = "2021"
 authors = ["Wedson Almeida Filho <wedsonaf@google.com>", "WeiKang Guo <guoweikang.kernel@gmail.com>"]
@@ -7,7 +7,7 @@ description = "Linked lists that supports arbitrary removal in constant time"
 license = "GPL-2.0-or-later"
 homepage = "https://github.com/arceos-org/arceos"
 repository = "https://github.com/arceos-org/linked_list"
-documentation = "https://docs.rs/linked_list"
+documentation = "https://docs.rs/linked_list_r4l"
 keywords = ["list"]
 categories = ["no-std", "rust-patterns"]
 
