@@ -9,9 +9,9 @@ pub use raw_list::{GetLinks, Links};
 #[macro_export(local_inner_macros)]
 #[doc(hidden)]
 macro_rules! __def_node_internal {
-    ($(#[$meta:meta])* ($($vis:tt)*) struct $name:ident($type:ty);) => {
+    ($(#[$meta:meta])* $vis:vis struct $name:ident($type:ty);) => {
         $(#[$meta])*
-        $($vis)* struct $name {
+        $vis struct $name {
             inner: $type,
             links: $crate::Links<Self>,
         }
@@ -27,7 +27,7 @@ macro_rules! __def_node_internal {
 
         impl $name {
             #[doc = "Create a node"]
-            $($vis)* const fn new(inner: $type) -> Self {
+            $vis const fn new(inner: $type) -> Self {
                 Self {
                     inner,
                     links: $crate::Links::new(),
@@ -36,13 +36,13 @@ macro_rules! __def_node_internal {
 
             #[inline]
             #[doc = "Return the referece of wrapped inner"]
-            $($vis)* const fn inner(&self) -> &$type {
+            $vis const fn inner(&self) -> &$type {
                 &self.inner
             }
 
             #[inline]
             #[doc = "Consumes the `node`, returning the wrapped inner"]
-            $($vis)* fn into_inner(self) -> $type {
+            $vis fn into_inner(self) -> $type {
                 self.inner
             }
         }
@@ -57,9 +57,9 @@ macro_rules! __def_node_internal {
         }
     };
 
-    ($(#[$meta:meta])* ($($vis:tt)*) struct $name:ident<$gen:ident>($type:ty);) => {
+    ($(#[$meta:meta])* $vis:vis struct $name:ident<$gen:ident>($type:ty);) => {
         $(#[$meta])*
-        $($vis)* struct $name<$gen> {
+        $vis struct $name<$gen> {
             inner: $type,
             links: $crate::Links<Self>,
         }
@@ -75,7 +75,7 @@ macro_rules! __def_node_internal {
 
         impl<$gen> $name<$gen> {
             #[doc = "Create a node"]
-            $($vis)* const fn new(inner: $type) -> Self {
+            $vis const fn new(inner: $type) -> Self {
                 Self {
                     inner,
                     links: $crate::Links::new(),
@@ -84,13 +84,13 @@ macro_rules! __def_node_internal {
 
             #[inline]
             #[doc = "Return the referece of wrapped inner"]
-            $($vis)* const fn inner(&self) -> &$type {
+            $vis const fn inner(&self) -> &$type {
                 &self.inner
             }
 
             #[inline]
             #[doc = "Consumes the `node`, returning the wrapped inner"]
-            $($vis)* fn into_inner(self) -> $type {
+            $vis fn into_inner(self) -> $type {
                 self.inner
             }
         }
@@ -167,11 +167,11 @@ macro_rules! __def_node_internal {
 #[macro_export(local_inner_macros)]
 macro_rules! def_node {
     ($(#[$meta:meta])* $vis:vis struct $name:ident($type:ty); $($t:tt)*) => {
-        __def_node_internal!($(#[$meta])* ($vis) struct $name($type););
+        __def_node_internal!($(#[$meta])* $vis struct $name($type););
         def_node!($($t)*);
     };
     ($(#[$meta:meta])* $vis:vis struct $name:ident<$gen:ident>($type:ty); $($t:tt)*) => {
-        __def_node_internal!($(#[$meta])* ($vis) struct $name<$gen>($type););
+        __def_node_internal!($(#[$meta])* $vis struct $name<$gen>($type););
         def_node!($($t)*);
     };
     () => ()
