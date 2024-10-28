@@ -1,0 +1,54 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="A macro for create a node type that can be used in List."><title>def_node in linked_list_r4l - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../static.files/rustdoc-198729e5.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="linked_list_r4l" data-themes="" data-resource-suffix="" data-rustdoc-version="1.84.0-nightly (df4ca44d3 2024-10-27)" data-channel="nightly" data-search-js="search-c5a66128.js" data-settings-js="settings-0f613d39.js" ><script src="../static.files/storage-59e33391.js"></script><script defer src="sidebar-items.js"></script><script defer src="../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-044be391.svg"></head><body class="rustdoc macro"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../linked_list_r4l/index.html">linked_<wbr>list_<wbr>r4l</a><span class="version">0.2.1</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">def_<wbr>node</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#syntax" title="Syntax">Syntax</a></li><li><a href="#example" title="Example">Example</a></li></ul></section><div id="rustdoc-modnav"><h2 class="in-crate"><a href="index.html">In crate linked_<wbr>list_<wbr>r4l</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="index.html">linked_list_r4l</a></span><h1>Macro <span class="macro">def_node</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../src/linked_list_r4l/lib.rs.html#168-178">Source</a> </span></div><pre class="rust item-decl"><span class="macro">macro_rules!</span> def_node {
+    ($(<span class="attr">#[<span class="macro-nonterminal">$meta</span>:meta]</span>)* <span class="macro-nonterminal">$vis</span>:vis <span class="kw">struct </span><span class="macro-nonterminal">$name</span>:ident(<span class="macro-nonterminal">$</span><span class="kw">type</span>:<span class="macro-nonterminal">ty</span>); $(<span class="macro-nonterminal">$t</span>:tt)<span class="kw-2">*</span>) =&gt; { ... };
+    ($(<span class="attr">#[<span class="macro-nonterminal">$meta</span>:meta]</span>)* <span class="macro-nonterminal">$vis</span>:vis <span class="kw">struct </span><span class="macro-nonterminal">$name</span>:ident&lt;<span class="macro-nonterminal">$gen</span>:ident&gt;(<span class="macro-nonterminal">$</span><span class="kw">type</span>:<span class="macro-nonterminal">ty</span>); $(<span class="macro-nonterminal">$t</span>:tt)<span class="kw-2">*</span>) =&gt; { ... };
+    () =&gt; { ... };
+}</pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>A macro for create a node type that can be used in List.</p>
+<h2 id="syntax"><a class="doc-anchor" href="#syntax">§</a>Syntax</h2>
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="macro">def_node!</span> {
+<span class="doccomment">/// A node with usize value.
+</span>[<span class="kw">pub</span>] <span class="kw">struct </span>UsizedNode(usize);
+<span class="doccomment">/// A node with generic inner type.
+</span>[<span class="kw">pub</span>] <span class="kw">struct </span>WrapperNode&lt;T&gt;(T);
+}</code></pre></div>
+<h2 id="example"><a class="doc-anchor" href="#example">§</a>Example</h2>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>linked_list_r4l::{def_node, List};
+
+<span class="macro">def_node!</span>{
+    <span class="doccomment">/// An example Node with usize
+    </span><span class="kw">struct </span>ExampleNode(usize);
+    <span class="doccomment">/// An example Node with generic Inner type and pub(crate)
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>NativeGenericNode(usize);
+    <span class="doccomment">/// An example Node with generic Inner type and pub vis
+    </span><span class="kw">pub struct </span>GenericNode&lt;T&gt;(T);
+}
+
+<span class="kw">let </span>node1 = Box::new(ExampleNode::new(<span class="number">0</span>));
+<span class="kw">let </span>node2 = Box::new(ExampleNode::new(<span class="number">1</span>));
+<span class="kw">let </span><span class="kw-2">mut </span>list =  List::&lt;Box&lt;ExampleNode&gt;&gt;::new();
+
+list.push_back(node1);
+list.push_back(node2);
+
+<span class="kw">for </span>(i,e) <span class="kw">in </span>list.iter().enumerate() {
+    <span class="macro">assert!</span>(<span class="kw-2">*</span>e.inner() == i);
+}
+
+<span class="kw">let </span>node1 = list.pop_front().unwrap();
+<span class="kw">let </span>node2 = list.pop_front().unwrap();
+
+<span class="macro">assert!</span>(node1.into_inner() == <span class="number">0</span>);
+<span class="macro">assert!</span>(node2.into_inner() == <span class="number">1</span>);
+<span class="macro">assert!</span>(list.pop_front().is_none());
+
+<span class="kw">let </span>node1 = Box::new(GenericNode::new(<span class="number">0</span>));
+<span class="kw">let </span>node2 = Box::new(GenericNode::new(<span class="number">1</span>));
+
+<span class="kw">let </span><span class="kw-2">mut </span>list =  List::&lt;Box&lt;GenericNode&lt;usize&gt;&gt;&gt;::new();
+
+list.push_back(node1);
+list.push_back(node2);
+
+<span class="kw">for </span>(i,e) <span class="kw">in </span>list.iter().enumerate() {
+    <span class="macro">assert!</span>(<span class="kw-2">*</span>e.inner() == i);
+}</code></pre></div>
+</div></details></section></div></main></body></html>

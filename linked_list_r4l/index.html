@@ -1,0 +1,54 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="LinkedList"><title>linked_list_r4l - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../static.files/rustdoc-198729e5.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="linked_list_r4l" data-themes="" data-resource-suffix="" data-rustdoc-version="1.84.0-nightly (df4ca44d3 2024-10-27)" data-channel="nightly" data-search-js="search-c5a66128.js" data-settings-js="settings-0f613d39.js" ><script src="../static.files/storage-59e33391.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-044be391.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../linked_list_r4l/index.html">linked_<wbr>list_<wbr>r4l</a><span class="version">0.2.1</span></h2></div><div class="sidebar-elems"><ul class="block"><li><a id="all-types" href="all.html">All Items</a></li></ul><section id="rustdoc-toc"><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#linkedlist" title="LinkedList">LinkedList</a><ul><li><a href="#examples" title="Examples">Examples</a></li></ul></li></ul><h3><a href="#macros">Crate Items</a></h3><ul class="block"><li><a href="#macros" title="Macros">Macros</a></li><li><a href="#structs" title="Structs">Structs</a></li><li><a href="#traits" title="Traits">Traits</a></li></ul></section><div id="rustdoc-modnav"></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1>Crate <span>linked_list_r4l</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../src/linked_list_r4l/lib.rs.html#1-178">Source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="linkedlist"><a class="doc-anchor" href="#linkedlist">§</a>LinkedList</h2>
+<p><a href="https://crates.io/crates/linked_list_r4l"><img src="https://img.shields.io/crates/v/linked_list_r4l" alt="Crates.io" /></a>
+<a href="https://docs.rs/linked_list_r4l"><img src="https://docs.rs/linked_list_r4l/badge.svg" alt="Doc.rs" /></a>
+<a href="https://github.com/arceos-org/linked_list_r4l/actions/workflows/ci.yml"><img src="https://github.com/arceos-org/linked_list_r4l/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI" /></a></p>
+<p>Linked lists that supports arbitrary removal in constant time.</p>
+<p>It is based on the linked list implementation in <a href="https://github.com/Rust-for-Linux/linux/blob/rust/rust/kernel/linked_list.rs">Rust-for-Linux</a>.</p>
+<h3 id="examples"><a class="doc-anchor" href="#examples">§</a>Examples</h3>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>linked_list_r4l::{GetLinks, Links, List};
+
+<span class="kw">type </span>InnerType = usize;
+
+<span class="kw">pub struct </span>ExampleNode {
+    <span class="kw">pub </span>inner: InnerType,
+    links: Links&lt;<span class="self">Self</span>&gt;,
+}
+
+<span class="kw">impl </span>GetLinks <span class="kw">for </span>ExampleNode {
+    <span class="kw">type </span>EntryType = <span class="self">Self</span>;
+
+    <span class="kw">fn </span>get_links(t: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="kw-2">&amp;</span>Links&lt;<span class="self">Self</span>&gt; {
+        <span class="kw-2">&amp;</span>t.links
+    }
+}
+
+<span class="kw">impl </span>ExampleNode {
+    <span class="kw">fn </span>new(inner: InnerType) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            inner,
+            links: Links::new()
+        }
+    }
+
+    <span class="kw">fn </span>inner(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>InnerType {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.inner
+    }
+}
+
+<span class="kw">let </span>node1 = Box::new(ExampleNode::new(<span class="number">0</span>));
+<span class="kw">let </span>node2 = Box::new(ExampleNode::new(<span class="number">1</span>));
+<span class="kw">let </span><span class="kw-2">mut </span>list =  List::&lt;Box&lt;ExampleNode&gt;&gt;::new();
+
+list.push_back(node1);
+list.push_back(node2);
+
+<span class="comment">// Support Iter
+</span><span class="kw">for </span>(i,e) <span class="kw">in </span>list.iter().enumerate() {
+    <span class="macro">assert!</span>(<span class="kw-2">*</span>e.inner() == i);
+}
+
+<span class="comment">// Pop drop
+</span><span class="macro">assert!</span>(<span class="kw-2">*</span>list.pop_front().unwrap().inner() == <span class="number">0</span>);
+<span class="macro">assert!</span>(<span class="kw-2">*</span>list.pop_front().unwrap().inner() == <span class="number">1</span>);
+</code></pre></div>
+</div></details><h2 id="macros" class="section-header">Macros<a href="#macros" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="macro" href="macro.def_node.html" title="macro linked_list_r4l::def_node">def_<wbr>node</a></div><div class="desc docblock-short">A macro for create a node type that can be used in List.</div></li></ul><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.Links.html" title="struct linked_list_r4l::Links">Links</a></div><div class="desc docblock-short">The links used to link an object on a linked list.</div></li><li><div class="item-name"><a class="struct" href="struct.List.html" title="struct linked_list_r4l::List">List</a></div><div class="desc docblock-short">A linked list.</div></li><li><div class="item-name"><a class="struct" href="struct.RawList.html" title="struct linked_list_r4l::RawList">RawList</a></div><div class="desc docblock-short">A linked list.</div></li></ul><h2 id="traits" class="section-header">Traits<a href="#traits" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="trait" href="trait.GetLinks.html" title="trait linked_list_r4l::GetLinks">GetLinks</a></div><div class="desc docblock-short">A descriptor of list elements.</div></li></ul></section></div></main></body></html>
